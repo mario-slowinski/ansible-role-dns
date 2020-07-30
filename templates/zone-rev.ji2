@@ -1,0 +1,17 @@
+{% set domain = group_names[0] | regex_replace('_','.') %}
+$TTL 2d  ; 172800 seconds
+@             IN      SOA   {{ inventory_hostname }}.{{ domain }}. root.{{ inventory_hostname }}.{{ domain }}. (
+                              {{ lookup('pipe', 'date +%m%d%H%M%S') }}; serial based on current time: mmddHHMMSS
+                              3h         ; refresh
+                              15m        ; update retry
+                              3w         ; expiry
+                              3h         ; nx = nxdomain ttl
+                              )
+              IN      NS      {{ inventory_hostname }}.{{ domain }}.
+{% for host in groups[item[0]] %}
+{% if hostvars[host]['ansible_host'] is defined %}
+{{ hostvars[host]['ansible_host'].split('.')[3] }}	IN	PTR	{{ host }}.{{ domain }}.
+{% elif hostvars[host][item[1]['name']] is defined %}
+{{ hostvars[host][item[1]['name']].split('.')[3] }}	IN	PTR	{{ host }}.{{ domain }}.
+{% endif %}
+{% endfor %}

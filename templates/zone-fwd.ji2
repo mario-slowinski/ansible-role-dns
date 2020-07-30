@@ -1,0 +1,21 @@
+$TTL 1D
+@	IN SOA	{{ inventory_hostname }} root.{{ inventory_hostname }} (
+					{{ lookup('pipe', 'date +%m%d%H%M%S') }}	; serial based on current time: mmddHHMMSS
+					1D	; refresh
+					1H	; retry
+					1W	; expire
+					3H )	; minimum
+	NS	{{ inventory_hostname }}
+	A	{{ ansible_host }}
+{% for host in groups[item[0]] %}
+{% if hostvars[host][item[1]['name']] is defined %}
+{{ hostvars[host]['inventory_hostname'] }}	A	{{ hostvars[host][item[1]['name']] }}
+{% elif hostvars[host]['ansible_host'] is defined %}
+{{ hostvars[host]['inventory_hostname'] }}	A	{{ hostvars[host]['ansible_host'] }}
+{% endif %}
+{% if hostvars[host]['cname'] is defined %}
+{% for cname in hostvars[host]['cname'] %}
+{{ cname }}	CNAME	{{ hostvars[host]['inventory_hostname'] }}
+{% endfor %}
+{% endif %}
+{% endfor %}

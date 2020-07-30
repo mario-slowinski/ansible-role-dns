@@ -1,0 +1,25 @@
+view {{ item['name']}} {
+  match-clients { {{ item['match-clients'] | join(";") }}; };
+  recursion {{ item['recursion'] }};
+{% if item['forwarders'] is undefined %}
+{% for group in groups | difference(['all','ungrouped']) %}
+{% set domain = group | regex_replace('_','.') %}
+  zone "{{ domain }}" IN {
+	  type master;
+	  file "{{ domain }}-{{ item['name'] }}";
+  };
+{% endfor %}
+{% set arpa = hostvars[inventory_hostname][item['name']] | default(ansible_host) | ipaddr('revdns') | regex_replace('^[0-9]+\.') %}
+  zone "{{ arpa }}" IN {
+	  type master;
+	  file "{{ arpa | replace('.in-addr.arpa.','-'+item['name']) }}";
+  };
+{% endif %}
+{% if "any" in item['match-clients'] %}
+  include "/etc/named.rfc1912.zones";
+  zone "." IN {
+    type hint;
+    file "named.ca";
+  };
+{% endif %}
+};

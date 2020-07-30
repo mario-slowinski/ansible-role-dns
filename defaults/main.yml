@@ -1,0 +1,19 @@
+domain: "{{ group_names[0] | regex_replace('_','.') }}"
+network: "{{ ansible_facts['default_ipv4']['network'] }}/{{ ansible_facts['default_ipv4']['netmask'] }}"
+forwarders:
+- 8.8.8.8 # google
+view:
+- name: public
+  match-clients: "any"
+  recursion: "no"
+named_conf:
+- { regex: "listen-on port", line: "\tlisten-on port 53 { localnets; };" }
+- { regex: "allow-query", line: "\tallow-query { any; };" }
+- { regex: "dnssec-validation", line: "\tdnssec-validation no;" }
+- { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ view[0]['name'] }}\";" }
+ifcfg_interface:
+- { regex: "DNS[0-9]+=-", line: "DNS1=127.0.0.1" }
+resolv_conf:
+- { state: "absent", regex: "nameserver", line: "There can be only one!" }
+- { state: "present", regex: "nameserver", line: "nameserver 127.0.0.1" }
+- { state: "present", regex: "search", line: "search {{ prv_domain }}" }
