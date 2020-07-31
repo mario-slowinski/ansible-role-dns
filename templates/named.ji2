@@ -1,5 +1,5 @@
 view {{ item['name']}} {
-  match-clients { {{ item['match-clients'] | join(";") }}; };
+  match-clients { {{ item['match-clients'] | join("; ") }}; };
   recursion {{ item['recursion'] }};
 {% if item['forwarders'] is undefined %}
 {% for domain in domains %}
