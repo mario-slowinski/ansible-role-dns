@@ -19,13 +19,13 @@
 - name: "Create forward zone file"
   tags: zone
   template:
-    dest: /var/named/{{ item[0] | regex_replace('_','.') }}-{{ item[1]['name'] }}
+    dest: /var/named/{{ item[0] }}-{{ item[1]['name'] }}
     group: named
     src: zone-fwd.ji2
     mode: 0640
     setype: named_conf_t
-    validate: "named-checkzone {{ item[0] | regex_replace('_','.') }} %s"
-  loop: "{{ group_names | product(view) | list }}"
+    validate: "named-checkzone {{ item[0] }} %s"
+  loop: "{{ domains | product(views) | list }}"
   notify: "Restart named service"
 
 - name: "Create reverse zone file"
@@ -37,7 +37,7 @@
     setype: named_conf_t
     src: zone-rev.ji2
     validate: "named-checkzone {{ hostvars[inventory_hostname][item[1]['name']] | default(ansible_host) | ipaddr('revdns') | regex_replace('^[0-9]+\\.') | regex_replace('_','.') }} %s"
-  loop: "{{ group_names | product(view) | list }}"
+  loop: "{{ domains | product(views) | list }}"
   notify: "Restart named service"
 
 - name: "Create zone config"
@@ -49,7 +49,7 @@
     setype: named_conf_t
     src: named.ji2
     validate: "named-checkconf %s"
-  loop: "{{ view }}"
+  loop: "{{ views }}"
   notify: "Restart named service"
 
 - name: "Remove hint type zone from 'named.conf' (moved to view configuration)"
@@ -72,6 +72,17 @@
     backup: yes
     validate: named-checkconf %s
   loop: "{{ named_conf }}"
+  notify: "Restart named service"
+
+- name: "Add additional views to 'named.conf'"
+  tags: config
+  lineinfile:
+    path: /etc/named.conf
+    regex: "view.{{ item['name'] }}"
+    line: "include \"/etc/named/view.{{ item['name'] }}\";"
+    backup: yes
+    validate: named-checkconf %s
+  loop: "{{ views[1:] }}"
   notify: "Restart named service"
 
 - name: "Add forwarders to 'named.conf'"

@@ -2,8 +2,7 @@ view {{ item['name']}} {
   match-clients { {{ item['match-clients'] | join(";") }}; };
   recursion {{ item['recursion'] }};
 {% if item['forwarders'] is undefined %}
-{% for group in groups | difference(['all','ungrouped']) %}
-{% set domain = group | regex_replace('_','.') %}
+{% for domain in domains %}
   zone "{{ domain }}" IN {
 	  type master;
 	  file "{{ domain }}-{{ item['name'] }}";

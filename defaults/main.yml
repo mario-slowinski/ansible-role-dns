@@ -1,15 +1,17 @@
 network: "{{ ansible_facts['default_ipv4']['network'] }}/{{ ansible_facts['default_ipv4']['netmask'] }}"
-forwarders:
-- 8.8.8.8 # google
-view:
+domains:
+- example.com
+views:
 - name: public
   match-clients: "any"
   recursion: "no"
+forwarders:
+- 8.8.8.8 # google
 named_conf:
 - { regex: "listen-on port", line: "\tlisten-on port 53 { localnets; };" }
 - { regex: "allow-query", line: "\tallow-query { any; };" }
 - { regex: "dnssec-validation", line: "\tdnssec-validation no;" }
-- { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ view[0]['name'] }}\";" }
+- { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ views[0]['name'] }}\";" }
 ifcfg_interface:
 - { regex: "DNS[0-9]+=-", line: "DNS1=127.0.0.1" }
 - { regex: "DOMAIN=", line: "DOMAIN=\"{{ group_names | join(' ') | regex_replace('_','.') }}\"" }

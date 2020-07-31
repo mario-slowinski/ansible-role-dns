@@ -7,7 +7,7 @@ $TTL 1D
 					3H )	; minimum
 	NS	{{ inventory_hostname }}
 	A	{{ ansible_host }}
-{% for host in groups[item[0]] %}
+{% for host in groups[item[0] | regex_replace('\.','_')] %}
 {% if hostvars[host][item[1]['name']] is defined %}
 {{ hostvars[host]['inventory_hostname'] }}	A	{{ hostvars[host][item[1]['name']] }}
 {% elif hostvars[host]['ansible_host'] is defined %}
