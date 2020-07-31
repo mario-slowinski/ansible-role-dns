@@ -1,4 +1,3 @@
-domain: "{{ group_names[0] | regex_replace('_','.') }}"
 network: "{{ ansible_facts['default_ipv4']['network'] }}/{{ ansible_facts['default_ipv4']['netmask'] }}"
 forwarders:
 - 8.8.8.8 # google
@@ -13,7 +12,8 @@ named_conf:
 - { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ view[0]['name'] }}\";" }
 ifcfg_interface:
 - { regex: "DNS[0-9]+=-", line: "DNS1=127.0.0.1" }
+- { regex: "DOMAIN=", line: "DOMAIN=\"{{ group_names | join(' ') | regex_replace('_','.') }}\"" }
 resolv_conf:
 - { state: "absent", regex: "nameserver", line: "There can be only one!" }
 - { state: "present", regex: "nameserver", line: "nameserver 127.0.0.1" }
-- { state: "present", regex: "search", line: "search {{ prv_domain }}" }
+- { state: "present", regex: "search", line: "search {{ group_names | join(' ') | regex_replace('_','.') }}" }

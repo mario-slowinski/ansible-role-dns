@@ -8,6 +8,14 @@
     - python3-libselinux
     - python3-policycoreutils
 
+- name: "Allow DNS service in firewall"
+  tags: firewall
+  firewalld:
+    service: "dns"
+    state: enabled
+    permanent: yes
+    immediate: yes
+
 - name: "Create forward zone file"
   tags: zone
   template:
@@ -17,7 +25,7 @@
     mode: 0640
     setype: named_conf_t
     validate: "named-checkzone {{ item[0] | regex_replace('_','.') }} %s"
-  loop: "{{ groups | difference(['all','ungrouped']) | product(view) | list }}"
+  loop: "{{ group_names | product(view) | list }}"
   notify: "Restart named service"
 
 - name: "Create reverse zone file"
@@ -29,7 +37,7 @@
     setype: named_conf_t
     src: zone-rev.ji2
     validate: "named-checkzone {{ hostvars[inventory_hostname][item[1]['name']] | default(ansible_host) | ipaddr('revdns') | regex_replace('^[0-9]+\\.') | regex_replace('_','.') }} %s"
-  loop: "{{ groups | difference(['all','ungrouped']) | product(view) | list }}"
+  loop: "{{ group_names | product(view) | list }}"
   notify: "Restart named service"
 
 - name: "Create zone config"
@@ -71,18 +79,28 @@
   blockinfile:
     path: /etc/named.conf
     insertafter: "recursion yes;"
-    marker: "\t// {mark} {{ domain }} DNS servers"
+    marker: "\t// {mark} forward to DNS servers"
     validate: named-checkconf %s
     block: "
       \tforwarders {
       \n\t\t{{ forwarders | join(';\n\t\t') }};
       \n\t};
    "
+  notify: "Restart named service"
 
-- name: "Start and enable DNS service"
-  tags: service
-  service:
-    name: "named"
-    state: started
-    enabled: yes
+- name: "Change DNS resolver to localhost for network connections"
+  tags: resolv
+  lineinfile:
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item[0] }}"
+    regex: "{{ item[1]['regex'] }}"
+    line: "{{ item[1]['line'] }}"
+  loop: "{{ ansible_interfaces | select('ne','lo') | list | product(ifcfg_interface) | list }}"
 
+- name: "Edit /etc/resolv.conf"
+  tags: resolv
+  lineinfile:
+    dest: "/etc/resolv.conf"
+    regex: "{{ item['regex'] }}"
+    line: "{{ item['line'] }}"
+    state: "{{ item['state'] }}"
+  loop: "{{ resolv_conf }}"
