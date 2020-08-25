@@ -1,5 +1,5 @@
 view {{ item['name']}} {
-  match-clients { {{ item['match-clients'] | join("; ") }}; };
+  match-clients { {{ item['match_clients'] | join("; ") }}; };
   recursion {{ item['recursion'] }};
 {% if item['forwarders'] is undefined %}
 {% for domain in domains %}
@@ -14,7 +14,7 @@ view {{ item['name']}} {
 	  file "{{ arpa | replace('.in-addr.arpa.','-'+item['name']) }}";
   };
 {% endif %}
-{% if "any" in item['match-clients'] %}
+{% if "any" in item['match_clients'] %}
   include "/etc/named.rfc1912.zones";
   zone "." IN {
     type hint;

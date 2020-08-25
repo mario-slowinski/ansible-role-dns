@@ -78,7 +78,7 @@
   tags: config
   lineinfile:
     path: /etc/named.conf
-    insertbefore: "view.{{ views | selectattr('match-clients', 'eq', ['any']) | map(attribute='name') | list | first }}"
+    insertbefore: "view.{{ views | selectattr('match_clients', 'eq', ['any']) | map(attribute='name') | list | first }}"
     regex: "view.{{ item['name'] }}"
     line: "include \"/etc/named/view.{{ item['name'] }}\";"
     backup: yes
