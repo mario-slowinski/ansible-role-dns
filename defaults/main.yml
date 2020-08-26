@@ -3,11 +3,11 @@ domains:
 - example.com
 views:
 - name: internal
-  match-clients: 
+  match_clients: 
   - "localhost"
   recursion: "yes"
 - name: public
-  match-clients: 
+  match_clients: 
   - "any"
   recursion: "no"
 forwarders:
@@ -17,10 +17,6 @@ named_conf:
 - { regex: "allow-query", line: "\tallow-query { any; };" }
 - { regex: "dnssec-validation", line: "\tdnssec-validation no;" }
 - { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ views[0]['name'] }}\";" }
-ifcfg_interface:
-- { regex: "DNS[0-9]+=-", line: "DNS1=127.0.0.1" }
-- { regex: "DOMAIN=", line: "DOMAIN=\"{{ domains | join(' ') }}\"" }
 resolv_conf:
-- { state: "absent", regex: "nameserver", line: "There can be only one!" }
-- { state: "present", regex: "nameserver", line: "nameserver 127.0.0.1" }
-- { state: "present", regex: "search", line: "search {{ domains | join(' ') }}" }
+- { insertbefore: "nameserver {{ forwarders[0] }}", regex: "^$", line: "nameserver 127.0.0.1" }
+- { insertbefore: "search", regex: "search", line: "search {{ domains | join(' ') }}" }

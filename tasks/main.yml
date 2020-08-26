@@ -100,19 +100,29 @@
    "
   notify: "Restart named service"
 
-- name: "Change DNS resolver to localhost for network connections"
-  tags: resolv
+- name: "Set localhost and forwarders in network interface config"
+  tags: ifcfg
   lineinfile:
     dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item[0] }}"
-    regex: "{{ item[1]['regex'] }}"
-    line: "{{ item[1]['line'] }}"
-  loop: "{{ ansible_interfaces | select('ne','lo') | list | product(ifcfg_interface) | list }}"
+    regex: "DNS{{ (ansible_loop.index <= ansible_loop.length / 2) | ternary(ansible_loop.index, ansible_loop.index - (ansible_loop.length / 2) | int) }}="
+    line: "DNS{{ (ansible_loop.index <= ansible_loop.length / 2) | ternary(ansible_loop.index, ansible_loop.index - (ansible_loop.length / 2) | int) }}={{ item[1] }}"
+  loop: "{{ ansible_interfaces | select('ne','lo') | list | product((['127.0.0.1'] + forwarders) | unique) | list }}"
+  loop_control:
+    extended: yes
 
-- name: "Edit /etc/resolv.conf"
+- name: "Set search domain in network interface config"
+  tags: ifcfg
+  lineinfile:
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    regex: "DOMAIN="
+    line: "DOMAIN={{ domains | join(' ') }}"
+  loop: "{{ ansible_interfaces | select('ne','lo') | list }}"
+
+- name: "Set localhost and forwarders in DNS resolv config"
   tags: resolv
   lineinfile:
     dest: "/etc/resolv.conf"
     regex: "{{ item['regex'] }}"
     line: "{{ item['line'] }}"
-    state: "{{ item['state'] }}"
+    insertbefore: "{{ item['insertbefore'] }}"
   loop: "{{ resolv_conf }}"
