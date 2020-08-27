@@ -1,0 +1,59 @@
+- name: "Create zone config"
+  tags: view
+  template:
+    dest: "/etc/named/view.{{ item['name'] }}"
+    group: named
+    mode: 0640
+    setype: named_conf_t
+    src: named.ji2
+    validate: "named-checkconf %s"
+  loop: "{{ views }}"
+  notify: "Restart named service"
+
+- name: "Remove hint type zone from 'named.conf' (moved to view configuration)"
+  tags: hint
+  replace:
+    path: /etc/named.conf
+    validate: named-checkconf %s
+    # https://regex101.com/r/vI3uI9/1
+    # (?s) - dot matches newline
+    regexp: '(?s)zone "." IN .*};\r*\n{2}'
+    replace: ''
+  notify: "Restart named service"
+
+- name: "Edit 'named.conf'"
+  tags: named
+  lineinfile:
+    path: /etc/named.conf
+    regex: "{{ item.regex }}"
+    line: "{{ item.line }}"
+    backup: yes
+    validate: named-checkconf %s
+  loop: "{{ named_conf }}"
+  notify: "Restart named service"
+
+- name: "Add additional views to 'named.conf'"
+  tags: view
+  lineinfile:
+    path: /etc/named.conf
+    insertbefore: "view.{{ views | selectattr('match_clients', 'eq', ['any']) | map(attribute='name') | list | first }}"
+    regex: "view.{{ item['name'] }}"
+    line: "include \"/etc/named/view.{{ item['name'] }}\";"
+    backup: yes
+    validate: named-checkconf %s
+  loop: "{{ views[1:] }}"
+  notify: "Restart named service"
+
+- name: "Add forwarders to 'named.conf'"
+  tags: forwarder
+  blockinfile:
+    path: /etc/named.conf
+    insertafter: "recursion yes;"
+    marker: "\t// {mark} forward to DNS servers"
+    validate: named-checkconf %s
+    block: "
+      \tforwarders {
+      \n\t\t{{ forwarders | join(';\n\t\t') }};
+      \n\t};
+   "
+  notify: "Restart named service"

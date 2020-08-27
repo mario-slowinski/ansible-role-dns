@@ -1,128 +1,19 @@
 - name: "Install required software"
   tags: install
-  dnf:
-    state: latest
-    name:
-    - bind
-    - bind-utils
-    - python3-libselinux
-    - python3-policycoreutils
+  include_tasks: install.yml
 
-- name: "Allow DNS service in firewall"
+- name: "Configure firewall"
   tags: firewall
-  firewalld:
-    service: "dns"
-    state: enabled
-    permanent: yes
-    immediate: yes
+  include_tasks: firewall.yml
 
-- name: "Create forward zone file"
+- name: "Configure zone files"
   tags: zone
-  template:
-    dest: /var/named/{{ item[0] }}-{{ item[1]['name'] }}
-    group: named
-    src: zone-fwd.ji2
-    mode: 0640
-    setype: named_conf_t
-    validate: "named-checkzone {{ item[0] }} %s"
-  loop: "{{ domains | product(views) | list }}"
-  notify: "Restart named service"
+  include_tasks: zone.yml
 
-- name: "Create reverse zone file"
-  tags: zone
-  template:
-    dest: "/var/named/{{ hostvars[inventory_hostname][item[1]['name']] | default(ansible_host) | ipaddr('revdns') | regex_replace('^[0-9]+\\.') | replace('.in-addr.arpa.','-'+item[1]['name']) }}"
-    group: named
-    mode: 0640
-    setype: named_conf_t
-    src: zone-rev.ji2
-    validate: "named-checkzone {{ hostvars[inventory_hostname][item[1]['name']] | default(ansible_host) | ipaddr('revdns') | regex_replace('^[0-9]+\\.') | regex_replace('_','.') }} %s"
-  loop: "{{ domains | product(views) | list }}"
-  notify: "Restart named service"
-
-- name: "Create zone config"
+- name: "Configure named"
   tags: config
-  template:
-    dest: "/etc/named/view.{{ item['name'] }}"
-    group: named
-    mode: 0640
-    setype: named_conf_t
-    src: named.ji2
-    validate: "named-checkconf %s"
-  loop: "{{ views }}"
-  notify: "Restart named service"
+  include_tasks: config.yml
 
-- name: "Remove hint type zone from 'named.conf' (moved to view configuration)"
-  tags: config
-  replace:
-    path: /etc/named.conf
-    validate: named-checkconf %s
-    # https://regex101.com/r/vI3uI9/1
-    # (?s) - dot matches newline
-    regexp: '(?s)zone "." IN .*};\r*\n{2}'
-    replace: ''
-  notify: "Restart named service"
-
-- name: "Edit 'named.conf'"
-  tags: config
-  lineinfile:
-    path: /etc/named.conf
-    regex: "{{ item.regex }}"
-    line: "{{ item.line }}"
-    backup: yes
-    validate: named-checkconf %s
-  loop: "{{ named_conf }}"
-  notify: "Restart named service"
-
-- name: "Add additional views to 'named.conf'"
-  tags: config
-  lineinfile:
-    path: /etc/named.conf
-    insertbefore: "view.{{ views | selectattr('match_clients', 'eq', ['any']) | map(attribute='name') | list | first }}"
-    regex: "view.{{ item['name'] }}"
-    line: "include \"/etc/named/view.{{ item['name'] }}\";"
-    backup: yes
-    validate: named-checkconf %s
-  loop: "{{ views[1:] }}"
-  notify: "Restart named service"
-
-- name: "Add forwarders to 'named.conf'"
-  tags: config
-  blockinfile:
-    path: /etc/named.conf
-    insertafter: "recursion yes;"
-    marker: "\t// {mark} forward to DNS servers"
-    validate: named-checkconf %s
-    block: "
-      \tforwarders {
-      \n\t\t{{ forwarders | join(';\n\t\t') }};
-      \n\t};
-   "
-  notify: "Restart named service"
-
-- name: "Set localhost and forwarders in network interface config"
-  tags: ifcfg
-  lineinfile:
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item[0] }}"
-    regex: "DNS{{ (ansible_loop.index <= ansible_loop.length / 2) | ternary(ansible_loop.index, ansible_loop.index - (ansible_loop.length / 2) | int) }}="
-    line: "DNS{{ (ansible_loop.index <= ansible_loop.length / 2) | ternary(ansible_loop.index, ansible_loop.index - (ansible_loop.length / 2) | int) }}={{ item[1] }}"
-  loop: "{{ ansible_interfaces | select('ne','lo') | list | product((['127.0.0.1'] + forwarders) | unique) | list }}"
-  loop_control:
-    extended: yes
-
-- name: "Set search domain in network interface config"
-  tags: ifcfg
-  lineinfile:
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
-    regex: "DOMAIN="
-    line: "DOMAIN={{ domains | join(' ') }}"
-  loop: "{{ ansible_interfaces | select('ne','lo') | list }}"
-
-- name: "Set localhost and forwarders in DNS resolv config"
-  tags: resolv
-  lineinfile:
-    dest: "/etc/resolv.conf"
-    regex: "{{ item['regex'] }}"
-    line: "{{ item['line'] }}"
-    insertbefore: "{{ item['insertbefore'] }}"
-  loop: "{{ resolv_conf }}"
+- name: "Configure localhost resolver"
+  tags: localhost
+  include_tasks: localhost.yml
