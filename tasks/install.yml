@@ -1,9 +1,0 @@
-- name: "dnf install rpms"
-  tags: dnf
-  dnf:
-    state: latest
-    name:
-    - bind
-    - bind-utils
-    - python3-libselinux
-    - python3-policycoreutils

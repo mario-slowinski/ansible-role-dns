@@ -1,7 +1,0 @@
-- name: "Allow services in firewall"
-  tags: services
-  firewalld:
-    service: "dns"
-    state: enabled
-    permanent: yes
-    immediate: yes

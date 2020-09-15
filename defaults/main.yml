@@ -1,7 +1,9 @@
-network: "{{ ansible_facts['default_ipv4']['network'] }}/{{ ansible_facts['default_ipv4']['netmask'] }}"
-domains:
+dns_network: "{{ ansible_facts['default_ipv4']['network'] }}/{{ ansible_facts['default_ipv4']['netmask'] }}"
+
+dns_domains:
 - example.com
-views:
+
+dns_views:
 - name: internal
   match_clients: 
   - "localhost"
@@ -10,13 +12,16 @@ views:
   match_clients: 
   - "any"
   recursion: "no"
-forwarders:
+
+dns_forwarders:
 - 8.8.8.8 # google
-named_conf:
+
+dns_named_conf:
 - { regex: "listen-on port", line: "\tlisten-on port 53 { localnets; };" }
 - { regex: "allow-query", line: "\tallow-query { any; };" }
 - { regex: "dnssec-validation", line: "\tdnssec-validation no;" }
-- { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ views[0]['name'] }}\";" }
-resolv_conf:
-- { insertbefore: "nameserver {{ forwarders[0] }}", regex: "^$", line: "nameserver 127.0.0.1" }
-- { insertbefore: "search", regex: "search", line: "search {{ domains | join(' ') }}" }
+- { regex: "include \"/etc/named.rfc", line: "include \"/etc/named/view.{{ dns_views[0]['name'] }}\";" }
+
+dns_resolv_conf:
+- { insertbefore: "nameserver {{ dns_forwarders[0] }}", regex: "^$", line: "nameserver 127.0.0.1" }
+- { insertbefore: "search", regex: "search", line: "search {{ dns_domains | join(' ') }}" }

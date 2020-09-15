@@ -1,0 +1,13 @@
+dns_rpms:
+- bind
+- bind-utils
+- python3-libselinux
+- python3-policycoreutils
+
+dns_firewalld:
+  zones:
+  - name: public
+    services:
+    - dns
+    ports: []
+

@@ -1,5 +1,5 @@
 - name: "Create zone config"
-  tags: view
+  tags: dns-config-view
   template:
     dest: "/etc/named/view.{{ item['name'] }}"
     group: named
@@ -7,11 +7,11 @@
     setype: named_conf_t
     src: named.ji2
     validate: "named-checkconf %s"
-  loop: "{{ views }}"
+  loop: "{{ dns_views }}"
   notify: "Restart named service"
 
 - name: "Remove hint type zone from 'named.conf' (moved to view configuration)"
-  tags: hint
+  tags: dns-config-hint
   replace:
     path: /etc/named.conf
     validate: named-checkconf %s
@@ -22,30 +22,30 @@
   notify: "Restart named service"
 
 - name: "Edit 'named.conf'"
-  tags: named
+  tags: dns-config-named
   lineinfile:
     path: /etc/named.conf
     regex: "{{ item.regex }}"
     line: "{{ item.line }}"
     backup: yes
     validate: named-checkconf %s
-  loop: "{{ named_conf }}"
+  loop: "{{ dns_named_conf }}"
   notify: "Restart named service"
 
 - name: "Add additional views to 'named.conf'"
-  tags: view
+  tags: dns-config-view
   lineinfile:
     path: /etc/named.conf
-    insertbefore: "view.{{ views | selectattr('match_clients', 'eq', ['any']) | map(attribute='name') | list | first }}"
+    insertbefore: "view.{{ dns_views | selectattr('match_clients', 'eq', ['any']) | map(attribute='name') | list | first }}"
     regex: "view.{{ item['name'] }}"
     line: "include \"/etc/named/view.{{ item['name'] }}\";"
     backup: yes
     validate: named-checkconf %s
-  loop: "{{ views[1:] }}"
+  loop: "{{ dns_views[1:] }}"
   notify: "Restart named service"
 
 - name: "Add forwarders to 'named.conf'"
-  tags: forwarder
+  tags: dns-config-forwarder
   blockinfile:
     path: /etc/named.conf
     insertafter: "recursion yes;"
@@ -53,7 +53,7 @@
     validate: named-checkconf %s
     block: "
       \tforwarders {
-      \n\t\t{{ forwarders | join(';\n\t\t') }};
+      \n\t\t{{ dns_forwarders | join(';\n\t\t') }};
       \n\t};
    "
   notify: "Restart named service"

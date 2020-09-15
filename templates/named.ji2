@@ -1,8 +1,8 @@
 view {{ item['name']}} {
   match-clients { {{ item['match_clients'] | join("; ") }}; };
   recursion {{ item['recursion'] }};
-{% if item['forwarders'] is undefined %}
-{% for domain in domains %}
+{% if item['dns_forwarders'] is undefined %}
+{% for domain in dns_domains %}
   zone "{{ domain }}" IN {
 	  type master;
 	  file "{{ domain }}-{{ item['name'] }}";
